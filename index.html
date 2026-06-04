@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Constanza Love OS</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=VT323&family=Quicksand:wght@400;600;700&family=Playfair+Display:ital@0;1&display=swap" rel="stylesheet" />
+</head>
+<body>
+
+  <!-- ══════════════════════════════════════════
+       FASE 1: PANTALLA TERMINAL DE INICIO
+  ══════════════════════════════════════════ -->
+  <div id="screen-boot" class="screen active">
+    <div class="boot-container">
+      <div class="boot-logo">❤</div>
+      <div class="boot-title">CONSTANZA LOVE OS</div>
+      <div class="boot-subtitle">v27.05.26 — Nyxel Romántico</div>
+      <div class="boot-log" id="boot-log"></div>
+      <button class="btn-primary hidden" id="btn-start-boot">INICIAR EXPERIENCIA</button>
+    </div>
+    <div class="scanlines"></div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       FASE 2: MENÚ PRINCIPAL
+  ══════════════════════════════════════════ -->
+  <div id="screen-menu" class="screen">
+    <div class="floating-hearts" id="menu-hearts"></div>
+    <div class="menu-container">
+      <div class="menu-cat-left">🐱</div>
+      <div class="menu-cat-right">😺</div>
+      <h1 class="menu-title">CONSTANZA<br/><span>LOVE OS</span></h1>
+      <p class="menu-subtitle">Una pequeña aventura creada especialmente para ti.</p>
+      <button class="btn-primary" id="btn-menu-start">Comenzar</button>
+      <div class="menu-version">Sistema de Amor v27.05.26</div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       FASE 3: SELECCIÓN DE PERSONAJE
+  ══════════════════════════════════════════ -->
+  <div id="screen-select" class="screen">
+    <div class="select-container">
+      <h2 class="select-title">Elige tu personaje</h2>
+      <p class="select-subtitle">¿Quién vivirá esta aventura?</p>
+      <div class="cards-row">
+        <!-- Noe -->
+        <div class="char-card" id="card-noe" data-char="noe">
+          <div class="char-sprite" id="sprite-noe">
+            <div class="cat noe-cat">
+              <div class="cat-ear left"></div>
+              <div class="cat-ear right"></div>
+              <div class="cat-head">
+                <div class="cat-eye left"></div>
+                <div class="cat-eye right"></div>
+                <div class="cat-nose"></div>
+                <div class="cat-mouth"></div>
+                <div class="cat-blush left"></div>
+                <div class="cat-blush right"></div>
+              </div>
+              <div class="cat-body noe-body">
+                <div class="cat-tail"></div>
+              </div>
+              <div class="cat-paw left-paw"></div>
+              <div class="cat-paw right-paw"></div>
+            </div>
+          </div>
+          <h3>Noe</h3>
+          <p>Siempre listo para buscar corazones.</p>
+          <button class="btn-char">Jugar como Noe</button>
+        </div>
+        <!-- Nini -->
+        <div class="char-card" id="card-nini" data-char="nini">
+          <div class="char-sprite" id="sprite-nini">
+            <div class="cat nini-cat">
+              <div class="cat-ear left"></div>
+              <div class="cat-ear right pink-inner"></div>
+              <div class="cat-ear right" style="display:none"></div>
+              <div class="cat-head">
+                <div class="cat-eye left"></div>
+                <div class="cat-eye right"></div>
+                <div class="cat-nose pink-nose"></div>
+                <div class="cat-mouth"></div>
+                <div class="cat-blush left"></div>
+                <div class="cat-blush right"></div>
+                <div class="cat-bow"></div>
+              </div>
+              <div class="cat-body nini-body">
+                <div class="cat-tail nini-tail"></div>
+              </div>
+              <div class="cat-paw left-paw"></div>
+              <div class="cat-paw right-paw"></div>
+            </div>
+          </div>
+          <h3>Nini</h3>
+          <p>Guardiana de los recuerdos.</p>
+          <button class="btn-char">Jugar como Nini</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       FASE 4: INTRODUCCIÓN NARRATIVA
+  ══════════════════════════════════════════ -->
+  <div id="screen-intro" class="screen">
+    <div class="intro-container">
+      <div class="intro-window">
+        <div class="window-bar">
+          <span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span>
+          <span class="window-title">historia.txt</span>
+        </div>
+        <div class="intro-text" id="intro-text"></div>
+        <button class="btn-primary hidden" id="btn-start-mission">Comenzar misión ❤️</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       FASE 5: MINIJUEGO
+  ══════════════════════════════════════════ -->
+  <div id="screen-game" class="screen">
+    <div class="game-ui">
+      <div class="hud">
+        <div class="hud-hearts" id="hud-hearts">❤️ 0/10</div>
+        <div class="hud-char" id="hud-char">Noe</div>
+      </div>
+    </div>
+    <canvas id="game-canvas"></canvas>
+    <!-- Controles táctiles -->
+    <div class="touch-controls" id="touch-controls">
+      <div class="touch-row">
+        <button class="touch-btn" id="btn-up">▲</button>
+      </div>
+      <div class="touch-row middle">
+        <button class="touch-btn" id="btn-left">◀</button>
+        <button class="touch-btn" id="btn-down">▼</button>
+        <button class="touch-btn" id="btn-right">▶</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       OVERLAY: MENSAJE AL RECOLECTAR CORAZÓN
+  ══════════════════════════════════════════ -->
+  <div id="overlay-message" class="overlay hidden">
+    <div class="message-window">
+      <div class="window-bar">
+        <span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span>
+        <span class="window-title">mensaje_del_sistema.love</span>
+      </div>
+      <div class="message-icon">💌</div>
+      <div class="message-text" id="message-text"></div>
+      <button class="btn-primary" id="btn-close-message">Continuar ✨</button>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       OVERLAY: LOGRO DESBLOQUEADO
+  ══════════════════════════════════════════ -->
+  <div id="overlay-achievement" class="achievement-toast hidden">
+    <span class="ach-icon" id="ach-icon">🏆</span>
+    <div>
+      <div class="ach-label">Logro desbloqueado</div>
+      <div class="ach-name" id="ach-name"></div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       FASE 8: CARTA FINAL
+  ══════════════════════════════════════════ -->
+  <div id="screen-letter" class="screen">
+    <div class="letter-boot" id="letter-boot">
+      <div class="boot-logo">💾</div>
+      <div class="letter-boot-text" id="letter-boot-text"></div>
+    </div>
+    <div class="letter-container hidden" id="letter-container">
+      <div class="letter-window">
+        <div class="window-bar">
+          <span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span>
+          <span class="window-title">carta_final.love</span>
+        </div>
+        <div class="letter-content" id="letter-content"></div>
+        <button class="btn-primary" id="btn-end">Ver el final ❤️</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       FASE 9: FINAL EMOTIVO
+  ══════════════════════════════════════════ -->
+  <div id="screen-end" class="screen">
+    <div class="end-bg" id="end-bg"></div>
+    <div class="end-container">
+      <div class="end-cats" id="end-cats">
+        <div class="end-cat-left">
+          <div class="cat noe-cat small"></div>
+        </div>
+        <div class="end-heart" id="end-heart">❤</div>
+        <div class="end-cat-right">
+          <div class="cat nini-cat small"></div>
+        </div>
+      </div>
+      <div class="end-text">
+        <p class="end-line" id="end-l1">Sistema restaurado correctamente.</p>
+        <p class="end-line" id="end-l2">Estado: Feliz ❤️</p>
+        <p class="end-line" id="end-l3">Usuario favorito: Constanza</p>
+        <p class="end-line" id="end-l4">Gracias por jugar.</p>
+      </div>
+      <button class="btn-primary" id="btn-restart">Volver a vivir la aventura 🔁</button>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
