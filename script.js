@@ -232,8 +232,8 @@ async function runIntro() {
 // FASE 5: MINIJUEGO — dos mundos distintos
 // ════════════════════════════════════════
 const Game = (() => {
-  const GRAVITY_NOE  = 0.55; // más pesado, movimiento rápido
-  const GRAVITY_NINI = 0.35; // flotante, suave
+  const GRAVITY_NOE  = 0.55;
+  const GRAVITY_NINI = 0.35;
   const JUMP_NOE     = -13;
   const JUMP_NINI    = -10;
   const SPEED_NOE    = 4.5;
@@ -243,6 +243,9 @@ const Game = (() => {
   const ITEM_SIZE = 28;
   const MAX_ITEMS = 10;
 
+  // El mundo es ancho fijo; la altura se adapta a la pantalla
+  const WORLD_W = 1600;
+
   let canvas, ctx;
   let player, items, particles, clouds, decorations, platforms, bgObjects;
   let keys  = {};
@@ -250,6 +253,7 @@ const Game = (() => {
   let animId;
   let onItemCollected;
   let currentChar;
+  let camX = 0; // posición X de la cámara en el mundo
 
   // ── Paletas por personaje ──
   const WORLDS = {
@@ -282,12 +286,14 @@ const Game = (() => {
     setupControls();
 
     State.heartsCollected = 0;
+    camX = 0;
     updateHUD();
 
     const w = WORLDS[charName];
+    const vh = canvas.height;
 
     player = {
-      x: 60, y: 300,
+      x: 60, y: vh - GROUND_H - PLAYER_H - 10,
       vx: 0, vy: 0,
       onGround: false,
       facingRight: true,
@@ -300,99 +306,106 @@ const Game = (() => {
       speed: w.speed,
     };
 
-    // Plataformas — distintas por personaje
+    // Helper para crear plataforma con _fromBottom
+    function mkPlat(x, fromBottom, pw, ph, isGround) {
+      return { x, y: vh - fromBottom, w: pw, h: ph, isGround: !!isGround, _fromBottom: fromBottom };
+    }
+
     if (charName === "noe") {
-      // Plataformas tipo asteroides/rocas flotantes
       platforms = [
-        { x: 0,   y: virtualH() - GROUND_H, w: virtualW(), h: GROUND_H, isGround: true },
-        { x: 80,  y: virtualH() - 170, w: 100, h: 14 },
-        { x: 250, y: virtualH() - 220, w: 120, h: 14 },
-        { x: 440, y: virtualH() - 180, w: 110, h: 14 },
-        { x: 600, y: virtualH() - 240, w: 100, h: 14 },
-        { x: 180, y: virtualH() - 300, w: 130, h: 14 },
-        { x: 380, y: virtualH() - 330, w: 110, h: 14 },
-        { x: 560, y: virtualH() - 360, w: 120, h: 14 },
+        mkPlat(0,        GROUND_H,  WORLD_W, GROUND_H, true),
+        mkPlat(80,       170, 120, 14),
+        mkPlat(320,      220, 130, 14),
+        mkPlat(560,      180, 120, 14),
+        mkPlat(800,      240, 110, 14),
+        mkPlat(1040,     200, 130, 14),
+        mkPlat(1260,     270, 120, 14),
+        mkPlat(200,      310, 140, 14),
+        mkPlat(680,      350, 130, 14),
+        mkPlat(1000,     310, 120, 14),
+        mkPlat(1400,     220, 120, 14),
       ];
     } else {
-      // Plataformas tipo colinas/hongos
       platforms = [
-        { x: 0,   y: virtualH() - GROUND_H, w: virtualW(), h: GROUND_H, isGround: true },
-        { x: 60,  y: virtualH() - 150, w: 130, h: 18 },
-        { x: 260, y: virtualH() - 190, w: 140, h: 18 },
-        { x: 460, y: virtualH() - 160, w: 130, h: 18 },
-        { x: 640, y: virtualH() - 210, w: 120, h: 18 },
-        { x: 160, y: virtualH() - 280, w: 140, h: 18 },
-        { x: 360, y: virtualH() - 310, w: 130, h: 18 },
-        { x: 550, y: virtualH() - 340, w: 120, h: 18 },
+        mkPlat(0,        GROUND_H,  WORLD_W, GROUND_H, true),
+        mkPlat(60,       150, 140, 18),
+        mkPlat(300,      190, 150, 18),
+        mkPlat(540,      160, 140, 18),
+        mkPlat(780,      210, 130, 18),
+        mkPlat(1020,     170, 140, 18),
+        mkPlat(1260,     230, 130, 18),
+        mkPlat(180,      290, 150, 18),
+        mkPlat(700,      320, 140, 18),
+        mkPlat(1100,     280, 130, 18),
+        mkPlat(1450,     190, 120, 18),
       ];
     }
 
-    // Items coleccionables — posiciones únicas por mundo
-    items = [];
-    const posNoe = [
-      [110, virtualH()-210],[280, virtualH()-260],[470, virtualH()-220],
-      [630, virtualH()-280],[210, virtualH()-340],[410, virtualH()-370],
-      [590, virtualH()-400],[80,  virtualH()-130],[520, virtualH()-130],
-      [330, virtualH()-130],
-    ];
-    const posNini = [
-      [120, virtualH()-190],[290, virtualH()-230],[490, virtualH()-200],
-      [670, virtualH()-250],[190, virtualH()-320],[390, virtualH()-350],
-      [570, virtualH()-380],[70,  virtualH()-120],[500, virtualH()-120],
-      [320, virtualH()-120],
-    ];
-    const pos = charName === "noe" ? posNoe : posNini;
-    for (let i = 0; i < MAX_ITEMS; i++) {
-      items.push({
-        x: pos[i][0], y: pos[i][1],
+    // Helper para crear item con _fromBottom
+    function mkItem(x, fromBottom) {
+      return {
+        x, y: vh - fromBottom, _fromBottom: fromBottom,
         collected: false,
-        bobOffset: Math.random() * Math.PI * 2,
-        glowPhase: Math.random() * Math.PI * 2,
-        spin: Math.random() * Math.PI * 2,
-      });
+        bobOffset:  Math.random() * Math.PI * 2,
+        glowPhase:  Math.random() * Math.PI * 2,
+        spin:       Math.random() * Math.PI * 2,
+      };
+    }
+
+    items = [];
+    if (charName === "noe") {
+      const pos = [
+        [140,210],[370,260],[610,220],[850,280],[1080,240],
+        [230,350],[760,390],[1310,310],[500,130],[1500,260],
+      ];
+      pos.forEach(([x,fb]) => items.push(mkItem(x, fb)));
+    } else {
+      const pos = [
+        [120,190],[360,230],[600,200],[840,260],[1070,220],
+        [210,330],[740,360],[1290,290],[480,120],[1480,240],
+      ];
+      pos.forEach(([x,fb]) => items.push(mkItem(x, fb)));
     }
 
     particles = [];
 
     // Decoración de fondo por mundo
     if (charName === "noe") {
-      // Estrellas de fondo + planetas
       bgObjects = [
-        ...Array.from({ length: 60 }, () => ({
+        ...Array.from({ length: 80 }, () => ({
           type: "star",
-          x: Math.random() * 900, y: Math.random() * 500,
+          x: Math.random() * WORLD_W, y: Math.random() * 500,
           r: 0.5 + Math.random() * 2.5,
           phase: Math.random() * Math.PI * 2,
           speed: 0.5 + Math.random() * 2,
         })),
-        { type:"planet", x:700, y:80,  r:28, col:"#8060d0", ring:true },
-        { type:"planet", x:120, y:120, r:18, col:"#d07040", ring:false },
-        { type:"planet", x:450, y:60,  r:12, col:"#40d0a0", ring:false },
+        { type:"planet", x:1200, y:80,  r:28, col:"#8060d0", ring:true },
+        { type:"planet", x:200,  y:100, r:18, col:"#d07040", ring:false },
+        { type:"planet", x:700,  y:60,  r:12, col:"#40d0a0", ring:false },
+        { type:"planet", x:1450, y:120, r:20, col:"#d0c040", ring:false },
       ];
-      clouds = []; // sin nubes en espacio
+      clouds = [];
     } else {
-      // Nubes esponjosas + mariposas
-      clouds = Array.from({ length: 5 }, (_, i) => ({
-        x: i * 200, y: 30 + Math.random() * 70,
+      clouds = Array.from({ length: 10 }, (_, i) => ({
+        x: i * 180, y: 30 + Math.random() * 70,
         w: 80 + Math.random() * 60, speed: 0.3 + Math.random() * 0.2,
       }));
-      bgObjects = Array.from({ length: 8 }, () => ({
+      bgObjects = Array.from({ length: 14 }, () => ({
         type: "butterfly",
-        x: Math.random() * 900, y: 60 + Math.random() * 250,
+        x: Math.random() * WORLD_W, y: 60 + Math.random() * 250,
         phase: Math.random() * Math.PI * 2,
         speed: 0.4 + Math.random() * 0.5,
         col: ["#ffb3e6","#b3d9ff","#b3ffcc","#fff3b3"][Math.floor(Math.random()*4)],
       }));
     }
 
-    // Decoraciones del suelo
     if (charName === "noe") {
-      decorations = Array.from({ length: 16 }, (_, i) => ({
+      decorations = Array.from({ length: 28 }, (_, i) => ({
         x: 20 + i * 58, type: "crater",
         size: 3 + Math.random() * 6,
       }));
     } else {
-      decorations = Array.from({ length: 14 }, (_, i) => ({
+      decorations = Array.from({ length: 26 }, (_, i) => ({
         x: 20 + i * 62, type: "flower",
         col: ["#ff9ec0","#ffd166","#c5e8a0","#a8d8f0","#c9b0f4"][i % 5],
       }));
@@ -402,35 +415,37 @@ const Game = (() => {
     loop();
   }
 
-  // Resolución interna fija del mundo (independiente del dispositivo)
-  const VW = 900;
-  const VH = 500;
-
-  function virtualW() { return VW; }
-  function virtualH() { return VH; }
+  function virtualW() { return WORLD_W; }
+  function virtualH() { return canvas ? canvas.height : 500; }
 
   function resize() {
     if (!canvas) return;
     canvas.width  = window.innerWidth;
     canvas.height = window.innerHeight;
-    // El suelo siempre cubre todo el ancho del mundo
+    // Reposicionar el suelo al fondo de la pantalla en coordenadas del mundo
     if (platforms && platforms.length) {
-      platforms[0].y = VH - GROUND_H;
-      platforms[0].w = VW;
+      platforms[0].y = canvas.height - GROUND_H;
+      platforms[0].w = WORLD_W;
     }
+    // Reposicionar plataformas y items al nuevo alto de pantalla
+    if (player) _repositionWorld();
   }
 
-  // Calcula la escala uniforme para que el mundo VW×VH quepa en pantalla
-  function getScale() {
-    return Math.min(canvas.width / VW, canvas.height / VH);
-  }
-  // Offset para centrar el mundo escalado en pantalla
-  function getOffset() {
-    const s = getScale();
-    return {
-      ox: (canvas.width  - VW * s) / 2,
-      oy: (canvas.height - VH * s) / 2,
-    };
+  // Ajusta posiciones Y relativas al alto de pantalla tras un resize
+  function _repositionWorld() {
+    const vh = canvas.height;
+    if (platforms) {
+      platforms[0].y = vh - GROUND_H;
+      for (let i = 1; i < platforms.length; i++) {
+        const p = platforms[i];
+        p.y = vh - p._fromBottom;
+      }
+    }
+    if (items) {
+      for (const h of items) {
+        h.y = vh - h._fromBottom;
+      }
+    }
   }
 
   function setupControls() {
@@ -480,8 +495,8 @@ const Game = (() => {
     player.x  += player.vx;
     player.y  += player.vy;
 
-    if (player.x < -PLAYER_W)     player.x = vw;
-    if (player.x > vw + PLAYER_W) player.x = -PLAYER_W;
+    // Clamp jugador al mundo (sin wrap en X)
+    player.x = Math.max(-PLAYER_W, Math.min(player.x, WORLD_W + PLAYER_W));
 
     player.onGround = false;
     for (const p of platforms) {
@@ -495,10 +510,16 @@ const Game = (() => {
         player.onGround = true;
       }
     }
-    if (player.y > vh + 100) { player.y = 0; player.vy = 0; }
+    if (player.y > vh + 100) { player.y = vh - GROUND_H - PLAYER_H - 10; player.vy = 0; }
 
     player.frameTimer++;
     if (player.frameTimer > 8) { player.frame = (player.frame + 1) % 2; player.frameTimer = 0; }
+
+    // Cámara suave: sigue al jugador, centrado en pantalla
+    const screenW = canvas.width;
+    const targetCamX = player.x + PLAYER_W / 2 - screenW / 2;
+    camX += (targetCamX - camX) * 0.12; // lerp suave
+    camX = Math.max(0, Math.min(camX, WORLD_W - screenW));
 
     // Recolección
     for (const h of items) {
@@ -567,22 +588,19 @@ const Game = (() => {
     const t  = Date.now() * 0.001;
     const w  = WORLDS[currentChar];
 
-    // Limpiar canvas completo
+    // Limpiar canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Aplicar escala uniforme para que VW×VH quepa en pantalla
-    const s = getScale();
-    const { ox, oy } = getOffset();
+    // Aplicar cámara — todo lo que se dibuje a continuación usa coords del mundo
     ctx.save();
-    ctx.translate(ox, oy);
-    ctx.scale(s, s);
+    ctx.translate(-Math.round(camX), 0);
 
-    // Fondo
+    // Fondo (debe cubrir toda la pantalla en coords de mundo)
     const sky = ctx.createLinearGradient(0, 0, 0, vh);
     sky.addColorStop(0, w.skyTop);
     sky.addColorStop(1, w.skyBot);
     ctx.fillStyle = sky;
-    ctx.fillRect(0, 0, vw, vh);
+    ctx.fillRect(camX, 0, canvas.width, vh); // solo visible area
 
     if (currentChar === "noe") {
       drawSpaceWorld(t, vw, vh, w);
@@ -604,7 +622,7 @@ const Game = (() => {
     // Jugador
     drawPlayer(player, t);
 
-    ctx.restore(); // quita escala
+    ctx.restore(); // quita la transformación de cámara
   }
 
   function drawSpaceWorld(t, vw, vh, w) {
