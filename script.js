@@ -242,8 +242,6 @@ const Game = (() => {
   const GROUND_H = 60;
   const ITEM_SIZE = 28;
   const MAX_ITEMS = 10;
-  const WORLD_W   = 900; // ancho fijo del mundo (independiente del dispositivo)
-  const WORLD_H   = 500; // alto fijo del mundo
 
   let canvas, ctx;
   let player, items, particles, clouds, decorations, platforms, bgObjects;
@@ -252,7 +250,6 @@ const Game = (() => {
   let animId;
   let onItemCollected;
   let currentChar;
-  let cameraX = 0; // posición horizontal de la cámara en el mundo
 
   // ── Paletas por personaje ──
   const WORLDS = {
@@ -285,7 +282,6 @@ const Game = (() => {
     setupControls();
 
     State.heartsCollected = 0;
-    cameraX = 0;
     updateHUD();
 
     const w = WORLDS[charName];
@@ -406,18 +402,35 @@ const Game = (() => {
     loop();
   }
 
-  function virtualW() { return WORLD_W; }
-  function virtualH() { return WORLD_H; }
+  // Resolución interna fija del mundo (independiente del dispositivo)
+  const VW = 900;
+  const VH = 500;
+
+  function virtualW() { return VW; }
+  function virtualH() { return VH; }
 
   function resize() {
     if (!canvas) return;
     canvas.width  = window.innerWidth;
     canvas.height = window.innerHeight;
-    // el suelo siempre cubre el ancho del mundo y se posiciona al fondo del mundo
+    // El suelo siempre cubre todo el ancho del mundo
     if (platforms && platforms.length) {
-      platforms[0].y = WORLD_H - GROUND_H;
-      platforms[0].w = WORLD_W;
+      platforms[0].y = VH - GROUND_H;
+      platforms[0].w = VW;
     }
+  }
+
+  // Calcula la escala uniforme para que el mundo VW×VH quepa en pantalla
+  function getScale() {
+    return Math.min(canvas.width / VW, canvas.height / VH);
+  }
+  // Offset para centrar el mundo escalado en pantalla
+  function getOffset() {
+    const s = getScale();
+    return {
+      ox: (canvas.width  - VW * s) / 2,
+      oy: (canvas.height - VH * s) / 2,
+    };
   }
 
   function setupControls() {
@@ -503,12 +516,6 @@ const Game = (() => {
       }
     }
 
-    // Cámara: sigue al jugador horizontalmente, centrada en pantalla
-    const screenW = canvas ? canvas.width : window.innerWidth;
-    const targetCamX = player.x + PLAYER_W / 2 - screenW / 2;
-    cameraX = Math.max(0, Math.min(targetCamX, WORLD_W - screenW));
-    if (WORLD_W <= screenW) cameraX = 0; // mundo más pequeño que pantalla: sin scroll
-
     // Partículas
     for (let i = particles.length - 1; i >= 0; i--) {
       const p = particles[i];
@@ -559,24 +566,23 @@ const Game = (() => {
     const vw = virtualW(), vh = virtualH();
     const t  = Date.now() * 0.001;
     const w  = WORLDS[currentChar];
-    const screenW = canvas.width;
-    const screenH = canvas.height;
 
-    // Escala vertical para que el mundo (WORLD_H) quepa en la pantalla
-    const scaleY = screenH / WORLD_H;
-    // Escala horizontal: en pantallas anchas no escala; en angostas escala igual que Y
-    const scaleX = screenW >= WORLD_W ? 1 : scaleY;
+    // Limpiar canvas completo
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+    // Aplicar escala uniforme para que VW×VH quepa en pantalla
+    const s = getScale();
+    const { ox, oy } = getOffset();
     ctx.save();
-    ctx.scale(scaleX, scaleY);
-    ctx.translate(-cameraX / scaleX, 0);
+    ctx.translate(ox, oy);
+    ctx.scale(s, s);
 
     // Fondo
     const sky = ctx.createLinearGradient(0, 0, 0, vh);
     sky.addColorStop(0, w.skyTop);
     sky.addColorStop(1, w.skyBot);
     ctx.fillStyle = sky;
-    ctx.fillRect(cameraX / scaleX, 0, screenW / scaleX, vh);
+    ctx.fillRect(0, 0, vw, vh);
 
     if (currentChar === "noe") {
       drawSpaceWorld(t, vw, vh, w);
@@ -598,7 +604,7 @@ const Game = (() => {
     // Jugador
     drawPlayer(player, t);
 
-    ctx.restore(); // cierra la transformación de cámara+escala
+    ctx.restore(); // quita escala
   }
 
   function drawSpaceWorld(t, vw, vh, w) {
